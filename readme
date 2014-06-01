@@ -1,0 +1,25 @@
+Create a config file (default location is config.yml). 
+For an example see example_config.yml
+
+You will probably need to include your plex token. You can get one easily through the browser.
+
+In order to download a set. Simply run
+
+./plexprep.rb DIRECTORY LIBRARY
+
+
+DIRECTORY - should represent an apache server listing on the remote server. This can be the full url, or just the directory (everything after the domain)
+LIBRARY - this can be any library that you have defined in your config. This contorls where the files will be stored, as well as what plex section will be refreshed. The default is "tv"
+
+
+This can be used for downloading any batch of media. Plex will be refreshed after the first and the last files have been downloaded.
+This allows for immediate feedback as soon as the first content becomes available.
+
+Already existing files will not be downloaded. Further you can limit the number of files downloaded by modifying the config yaml.
+
+------------
+Installation Requirements
+
+-ruby (tested on ruby 1.9.3)
+-nokogiri
+-wget

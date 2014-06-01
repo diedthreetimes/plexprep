@@ -1,0 +1,21 @@
+host_address: http://remote_file_server.without.plex:port
+max_downloads: -1 # set to -1 for unlimited
+plex:
+  address: localhost:32400
+  # The id is the section id for a given library in plex. The directory is the place you would like to sync remote files to
+  libraries:
+    tv: 
+      id: 2
+      directory: "/home/username/TV"
+    movie: 
+      id: 1
+      directory: "/home/username/Movies"
+
+# The following information is needed if your server enables access control
+# If it doesn't you may be able to put in junk here. This info can be retrieved by 
+# Looking at the X-plex headers on any request using chrome's network debugger
+# One could imagine also storing UN/PW here and logging in
+  cookie:
+    identifier: rAnDomString3213           
+    token: RanDomStringToken234
+    username: your_plex_username
