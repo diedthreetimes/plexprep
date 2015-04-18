@@ -33,6 +33,11 @@ def remote_ls server, directory
   links.slice(1, links.length)
 end
 
+def sh_sanitize inp
+  # Block syntax used to fix \\ in regex causing issues
+  inp.gsub('(','\\(').gsub(')','\\)').gsub('\''){'\\\''}
+end
+
 # Download Only if it doesn't already exist
 # returns true on success
 def download url, local_dir
@@ -42,12 +47,13 @@ def download url, local_dir
     return false
   end
 
-
-  system("wget #{url} -O #{local_file}")
+  system("wget #{sh_sanitize(url)} -O #{sh_sanitize(local_file)}")
 
   if !(File.size?( local_file ))
     warn "Download of #{File.basename(local_file)} failed."
-    File.unlink( local_file)
+    if (File.exists?(local_file))
+      File.unlink( local_file)
+    end
     return false
   end
 
