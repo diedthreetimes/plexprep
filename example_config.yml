@@ -19,3 +19,7 @@ plex:
     identifier: rAnDomString3213           
     token: RanDomStringToken234
     username: your_plex_username
+
+storage_host:
+  username: your_username
+  password: your_password

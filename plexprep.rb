@@ -3,6 +3,7 @@
 require 'yaml'
 require 'net/http'
 require 'nokogiri'
+require 'fileutils'
 
 config_file = File.join(File.dirname( __FILE__), "config.yml").to_s
 
@@ -38,16 +39,42 @@ def sh_sanitize inp
   inp.gsub('(','\\(').gsub(')','\\)').gsub('\''){'\\\''}
 end
 
+def remote_filename url, wget_args, local_dir = nil
+  if wget_args.nil? || wget_args == ""
+    File.basename(url)
+  else
+    # TODO: This actually downloads the file again! Ugh...
+    file_name = `wget #{wget_args} --server-response -q \"#{url}\" 2>&1 | grep \"Content-Disposition:\" | tail -1  | awk 'match($0, /filename=(.+)/, f){ print f[1] }'`.strip
+    if file_name[0] == '"' && file_name[file_name.size-1] == '"'
+      file_name = file_name.slice(1,file_name.size - 2)
+    end
+
+    FileUtils.mv(file_name, File.join(local_dir, file_name))
+
+    File.join(local_dir, file_name)
+  end
+end
+
 # Download Only if it doesn't already exist
 # returns true on success
-def download url, local_dir
-  local_file = File.join(local_dir, File.basename(url))
-  if File.size?( local_file )
-    puts "Skipping #{File.basename(local_file)}"
-    return false
-  end
+def download url, local_dir, wget_args = ""
+  #TODO: Can we remove the need for this logic by using the -c option? If yes restructure to have local_file printed from wget using logic from remote_filename
+  #    This is a good alternative to fixing the erraneous download in remote_filename
+  # TODO: Fix double download in remote_filename and then uncomment this.
+  local_file = nil
 
-  system("wget #{sh_sanitize(url)} -O #{sh_sanitize(local_file)}")
+  if wget_args == ""
+    local_file = File.join(local_dir, remote_filename(url, wget_args))
+    if File.size?( local_file )
+      puts "Skipping #{File.basename(local_file)}"
+      return false
+    end
+
+    system("wget #{wget_args} #{sh_sanitize(url)} -O #{sh_sanitize(local_file)}")
+  else
+    # TODO: When remote_filename is fixed rework this logic (by removing this block)
+    local_file = remote_filename(url, wget_args, local_dir)
+  end
 
   if !(File.size?( local_file ))
     warn "Download of #{File.basename(local_file)} failed."
@@ -89,9 +116,13 @@ def request_refresh yaml, library_id
 end
 
 def usage
-  warn "Usage: #{File.basename($0)} url [library_type]"
+  warn "Usage: #{File.basename($0)} [-p] url [library_type]"
+  # With the -p option present the url shoudln't be present. lists of files to download are presented via stdin
   exit
 end
+
+
+# TODO: Integrate with Thor for easier command parsing and help
 
 if __FILE__ == $0
   if ARGV[0].nil?
@@ -100,17 +131,29 @@ if __FILE__ == $0
 
   yaml = YAML.load_file( config_file )
 
+
+  wget_args = ""
+  files = []
+
+  if ARGV[0] == "-p" # put-io integration
+    # TODO: ask username and password (or just read from yaml)
+    wget_args = "--content-disposition -c --http-user=#{yaml["storage_host"]["username"]} --http-password=#{yaml["storage_host"]["password"]}"
+    while file = $stdin.gets
+     files.push file
+    end
+  else # regular operation
+    files = remote_ls yaml["host_address"], directory
+  end
+
   directory = ARGV[0]
   library = (ARGV[1].nil? ? "tv" : ARGV[1])
-
-  files = remote_ls yaml["host_address"], directory
 
   num_downloaded = 0
   files.each do |f|
     break if num_downloaded == yaml["max_downloads"].to_i
 
 #    puts "About to download #{f}"
-    if download f, yaml["plex"]["libraries"][library]["directory"]
+    if download f, yaml["plex"]["libraries"][library]["directory"], wget_args
       num_downloaded += 1
 
       # We may want to watch this as soon as it is done.
