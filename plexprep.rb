@@ -64,7 +64,7 @@ def download url, local_dir, wget_args = ""
   local_file = nil
 
   if wget_args == ""
-    local_file = File.join(local_dir, remote_filename(url, wget_args))
+    local_file = remote_filename(url, wget_args, local_dir)
     if File.size?( local_file )
       puts "Skipping #{File.basename(local_file)}"
       return false
@@ -134,26 +134,45 @@ if __FILE__ == $0
 
   wget_args = ""
   files = []
+  directory = nil
+  library = nil
+  create_directory = false
 
   if ARGV[0] == "-p" # put-io integration
-    # TODO: ask username and password (or just read from yaml)
     wget_args = "--content-disposition -c --http-user=#{yaml["storage_host"]["username"]} --http-password=#{yaml["storage_host"]["password"]}"
     while file = $stdin.gets
      files.push file
     end
+
+    directory = ARGV[1]
+    library = (ARGV[2].nil? ? "tv" : ARGV[2])
+
+    create_directory = true
+
+    puts "Downloading into #{library} /#{directory}"
   else # regular operation
+
+    directory = ARGV[0]
+    library = (ARGV[1].nil? ? "tv" : ARGV[1])
+
     files = remote_ls yaml["host_address"], directory
   end
 
-  directory = ARGV[0]
-  library = (ARGV[1].nil? ? "tv" : ARGV[1])
+
 
   num_downloaded = 0
   files.each do |f|
     break if num_downloaded == yaml["max_downloads"].to_i
 
+    local_dir = yaml["plex"]["libraries"][library]["directory"]
+
+    if create_directory
+      local_dir = File.join(local_dir, directory)
+      FileUtils.mkdir(local_dir) unless File.exists?(local_dir)
+    end
+
 #    puts "About to download #{f}"
-    if download f, yaml["plex"]["libraries"][library]["directory"], wget_args
+    if download f, local_dir, wget_args
       num_downloaded += 1
 
       # We may want to watch this as soon as it is done.
