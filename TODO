@@ -1,0 +1,3 @@
+Finish *.i/o integration 
+- Support the -p option with a single url
+- Ignore new lines in the input (don't try and download nothing)
